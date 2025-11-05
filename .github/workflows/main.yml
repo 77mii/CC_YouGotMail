@@ -50,19 +50,19 @@ jobs:
       # 8️⃣ Upload and deploy to Hestia
       - name: Upload and extract on server
         run: |
-              # 1. Upload the zip file to the SERVER_USERNAME's home directory
+              # 1. Upload the zip file
               scp -o StrictHostKeyChecking=no deploy.zip ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/home/${{ secrets.SERVER_USERNAME }}/deploy.zip
 
               # 2. Connect via SSH and run deployment commands
               ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "
                 
-                # Set DEPLOY_PATH using SERVER_USERNAME
+                # Set DEPLOY_PATH
                 DEPLOY_PATH=\"/home/${{ secrets.SERVER_USERNAME }}/web/joe.lafamiglia.my.id/public_html\"
                 
                 # Navigate to the deployment directory
                 cd \$DEPLOY_PATH
                 
-                # Unzip the file from the correct location
+                # Unzip the new code
                 unzip -o /home/${{ secrets.SERVER_USERNAME }}/deploy.zip
                 
                 # Clean up the zip file
@@ -74,14 +74,13 @@ jobs:
                 mkdir -p \$DEPLOY_PATH/storage/framework/sessions
                 mkdir -p \$DEPLOY_PATH/storage/logs
                 
-                # Copy .env from the correct location
-                # This assumes you placed the file at /home/YOUR_USER/.env.production
+                # Copy the (now correct) .env file from your home directory
                 cp /home/${{ secrets.SERVER_USERNAME }}/.env.production \$DEPLOY_PATH/.env
                 
                 # Set correct permissions
                 chmod -R 775 \$DEPLOY_PATH/storage
                 
-                # Run optimizations
+                # Run optimizations (This will now connect to MySQL)
                 php artisan optimize
                 php artisan cache:clear
               "
