@@ -50,10 +50,42 @@ jobs:
       # 8️⃣ Upload and deploy to Hestia
       - name: Upload and extract on server
         run: |
-          scp -o StrictHostKeyChecking=no deploy.zip ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/home/${{ secrets.SERVER_USERNAME }}/deploy.zip
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "
-            cd /home/${{ secrets.SERVER_USERNAME }}/web/joe.lafamiglia.my.id/public_html &&
-            unzip -o /home/${{ secrets.SERVER_USERNAME }}/deploy.zip &&
-            rm /home/${{ secrets.SERVER_USERNAME }}/deploy.zip &&
-            php artisan optimize
-          "
+              # 1. Upload the zip file
+              scp -o StrictHostKeyChecking=no deploy.zip ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }}:/home/${{ secrets.SERVER_USERNAME }}/deploy.zip
+
+              # 2. Connect via SSH and run deployment commands
+              ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "
+                # Set the path for easier reading
+                DEPLOY_PATH=\"/home/${{ secrets.SERVER_USERNAME }}/web/joe.lafamiglia.my.id/public_html\"
+                
+                # Navigate to the deployment directory
+                cd \$DEPLOY_PATH
+                
+                # Unzip the new code, overwriting old files
+                unzip -o /home/${{ secrets.SERVER_USERNAME }}/deploy.zip
+                
+                # Clean up the zip file from the server
+                rm /home/${{ secrets.SERVER_USERNAME }}/deploy.zip
+                
+                # --- FIX: Create required storage directories ---
+                # This fixes the 'View path not found' error
+                mkdir -p \$DEPLOY_PATH/storage/framework/views
+                mkdir -p \$DEPLOY_PATH/storage/framework/cache
+                mkdir -p \$DEPLOY_PATH/storage/framework/sessions
+                mkdir -p \$DEPLOY_PATH/storage/logs
+                
+                # --- FIX: Copy production .env file ---
+                # This fixes the 'no .env' file error.
+                # Assumes your file is at /home/USER/.env.production
+                # Change this path if you stored it elsewhere!
+                cp /home/${{ secrets.DEPLOY_USER }}/.env.production \$DEPLOY_PATH/.env
+                
+                # Set correct permissions for storage (optional but recommended)
+                chmod -R 775 \$DEPLOY_PATH/storage
+                
+                # Now, run the optimize command
+                php artisan optimize
+                
+                # (Optional) Clear any other caches
+                php artisan cache:clear
+              "
